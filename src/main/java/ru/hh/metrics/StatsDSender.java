@@ -29,22 +29,25 @@ public class StatsDSender {
 
   private void sendPercentilesMetric(String metricName, PercentileAggregator percentileAggregator) {
     Map<List<Tag>, Integer> percentileAggregatorSnapshot = percentileAggregator.getSnapshotAndReset();
-    percentileAggregatorSnapshot.forEach((tags, percentileValue) -> statsDClient.gauge(metricName + "." + getTagString(tags), percentileValue));
+    percentileAggregatorSnapshot.forEach((tags, percentileValue) -> {
+      String tagsString = getTagString(tags.toArray(new Tag[tags.size()]));
+      statsDClient.gauge(metricName + "." + tagsString, percentileValue);
+    });
   }
 
   private void sendCountMetric(String metricName, CounterAggregator counterAggregator) {
-    Map<List<Tag>, Integer> counterAggregatorSnapshot = counterAggregator.getSnapshotAndReset();
-    counterAggregatorSnapshot.forEach((tags, count) -> statsDClient.gauge(metricName + "." + getTagString(tags), (double) count / PERIOD_OF_TRANSMISSION_STATS_SECONDS));
+    Map<Tags, Integer> counterAggregatorSnapshot = counterAggregator.getSnapshotAndReset();
+    counterAggregatorSnapshot.forEach((tags, count) -> statsDClient.gauge(metricName + "." + getTagString(tags.getTags()), (double) count / PERIOD_OF_TRANSMISSION_STATS_SECONDS));
   }
 
-  static String getTagString(List<Tag> tagList) {
+  static String getTagString(Tag[] tags) {
     StringBuilder stringBuilder = new StringBuilder();
 
-    for (int i = 0; i < tagList.size(); i++) {
-      stringBuilder.append(tagList.get(i).name.replace('.', '-'))
+    for (int i = 0; i < tags.length; i++) {
+      stringBuilder.append(tags[i].name.replace('.', '-'))
               .append("_is_")
-              .append(tagList.get(i).value.replace('.', '-'));
-      if (i != tagList.size() - 1) {
+              .append(tags[i].value.replace('.', '-'));
+      if (i != tags.length - 1) {
         stringBuilder.append(".");
       }
     }

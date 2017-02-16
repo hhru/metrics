@@ -3,11 +3,9 @@ package ru.hh.metrics;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import static java.lang.System.currentTimeMillis;
-import static java.util.Collections.singletonList;
 
 public class CounterAggregatorPerfTest {
 
@@ -40,7 +38,7 @@ public class CounterAggregatorPerfTest {
     };
     Thread increaseMetricThread = new Thread(addTask);
 
-    Collection<Map<List<Tag>, Integer>> snapshots = new ArrayList<>(increases / snapshotIteration);
+    Collection<Map<Tags, Integer>> snapshots = new ArrayList<>(increases / snapshotIteration);
 
     long start = currentTimeMillis();
 
@@ -69,21 +67,21 @@ public class CounterAggregatorPerfTest {
     return new Tag("label", tagValues[tagValueIndex]);
   }
 
-  private static void checkSnapshots(Collection<Map<List<Tag>, Integer>> snapshots) {
-    Map<List<Tag>, Integer> tagsToValue = merge(snapshots);
+  private static void checkSnapshots(Collection<Map<Tags, Integer>> snapshots) {
+    Map<Tags, Integer> tagsToValue = merge(snapshots);
     for (int i = 0; i<tagValues.length; i++) {
       int expected = increases * 2 / tagValues.length;
-      int actual = tagsToValue.get(singletonList(createTag(i)));
+      int actual = tagsToValue.get(new Tags(new Tag[]{createTag(i)}));
       if (actual != expected) {
         throw new IllegalStateException("tag " + i + " expected " + expected + " got " + actual);
       }
     }
   }
 
-  private static Map<List<Tag>, Integer> merge(Collection<Map<List<Tag>, Integer>> snapshots) {
-    Map<List<Tag>, Integer> tagsToTotalValue = new HashMap<>();
-    for (Map<List<Tag>, Integer> snapshot : snapshots) {
-      for (Map.Entry<List<Tag>, Integer> tagsAndSnapshotValue : snapshot.entrySet()) {
+  private static Map<Tags, Integer> merge(Collection<Map<Tags, Integer>> snapshots) {
+    Map<Tags, Integer> tagsToTotalValue = new HashMap<>();
+    for (Map<Tags, Integer> snapshot : snapshots) {
+      for (Map.Entry<Tags, Integer> tagsAndSnapshotValue : snapshot.entrySet()) {
         Integer totalValue = tagsToTotalValue.get(tagsAndSnapshotValue.getKey());
         if (totalValue == null) {
           totalValue = 0;
