@@ -1,7 +1,5 @@
 package ru.hh.metrics;
 
-import java.util.Objects;
-
 public class Tag implements Comparable<Tag> {
   public final String name;
   public final String value;
@@ -35,6 +33,8 @@ public class Tag implements Comparable<Tag> {
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, value);
+    int result = name.hashCode();
+    result = 31 * result + value.hashCode();
+    return result;
   }
 }
