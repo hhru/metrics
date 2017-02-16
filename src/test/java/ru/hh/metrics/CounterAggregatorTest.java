@@ -23,15 +23,14 @@ public class CounterAggregatorTest {
     Tag tag = new Tag("label", "first");
     counterAggregator.add(5, tag);
     Map<Tags, Integer> tagsToValue;
-    Tags tags = new Tags(new Tag[]{tag});
 
     tagsToValue = counterAggregator.getSnapshotAndReset();
     assertEquals(1, tagsToValue.size());
-    assertEquals(5, tagsToValue.get(tags).intValue());
+    assertEquals(5, tagsToValue.get(tag).intValue());
 
     tagsToValue = counterAggregator.getSnapshotAndReset();
     assertEquals(1, tagsToValue.size());
-    assertEquals(0,  tagsToValue.get(tags).intValue());
+    assertEquals(0,  tagsToValue.get(tag).intValue());
 
     tagsToValue = counterAggregator.getSnapshotAndReset();
     assertTrue(tagsToValue.isEmpty());
@@ -45,7 +44,7 @@ public class CounterAggregatorTest {
     Map<Tags, Integer> tagsToCount = counterAggregator.getSnapshotAndReset();
 
     assertEquals(1, tagsToCount.size());
-    assertEquals(8, tagsToCount.get(new Tags(new Tag[]{new Tag("label", "first"), new Tag("notlabel", "a")})).intValue());
+    assertEquals(8, tagsToCount.get(Tags.of(new Tag[]{new Tag("label", "first"), new Tag("notlabel", "a")})).intValue());
   }
 
   @Test
@@ -58,17 +57,16 @@ public class CounterAggregatorTest {
     Map<Tags, Integer> tagsToCount = counterAggregator.getSnapshotAndReset();
 
     assertEquals(4, tagsToCount.size());
-    assertEquals(5, tagsToCount.get(new Tags(new Tag[]{new Tag("label", "first"), new Tag("region", "vacancy")})).intValue());
-    assertEquals(2, tagsToCount.get(new Tags(new Tag[]{new Tag("label", "first"), new Tag("region", "resume")})).intValue());
-    assertEquals(6, tagsToCount.get(new Tags(new Tag[]{new Tag("label", "second"), new Tag("region", "resume")})).intValue());
-    assertEquals(11, tagsToCount.get(new Tags(new Tag[]{new Tag("label", "third"), new Tag("region", "resume")})).intValue());
+    assertEquals(5, tagsToCount.get(Tags.of(new Tag[]{new Tag("label", "first"), new Tag("region", "vacancy")})).intValue());
+    assertEquals(2, tagsToCount.get(Tags.of(new Tag[]{new Tag("label", "first"), new Tag("region", "resume")})).intValue());
+    assertEquals(6, tagsToCount.get(Tags.of(new Tag[]{new Tag("label", "second"), new Tag("region", "resume")})).intValue());
+    assertEquals(11, tagsToCount.get(Tags.of(new Tag[]{new Tag("label", "third"), new Tag("region", "resume")})).intValue());
   }
 
   @Test
   public void sendMetricsTwoThreads() throws InterruptedException {
     int increases = 1_000_000;
     Tag tag = new Tag("label", "first");
-    Tags tags = new Tags(new Tag[]{tag});
     Runnable increaseMetricTask = () -> {
       for (int i = 0; i < increases; i++) {
         counterAggregator.add(1, tag);
@@ -95,7 +93,7 @@ public class CounterAggregatorTest {
 
       int sum = 0;
       for (Map<Tags, Integer> snapshot : snapshots) {
-        Integer snapshotValue = snapshot.get(tags);
+        Integer snapshotValue = snapshot.get(tag);
         if (snapshotValue != null) {
           sum += snapshotValue;
         }

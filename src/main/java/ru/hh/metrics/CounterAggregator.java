@@ -18,7 +18,7 @@ public class CounterAggregator {
   }
 
   public void add(int value, Tag... tagsArr) {
-    Tags tags = new Tags(tagsArr);
+    Tags tags = Tags.of(tagsArr);
     AtomicInteger counter = tagsToCounter.get(tags);
     if (counter == null) {
       if (tagsToCounter.size() >= maxNumOfDifferentTags) {
