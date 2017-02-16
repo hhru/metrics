@@ -23,13 +23,17 @@ public class CounterAggregator {
   public void add(int value, Tag... tags) {
     List<Tag> tagList = Arrays.asList(tags);
     Collections.sort(tagList);
-    tagListToCounter.computeIfAbsent(tagList, key -> {
+    AtomicInteger counter = tagListToCounter.get(tagList);
+    if (counter == null) {
       if (tagListToCounter.size() >= maxNumOfDifferentTags) {
         removeSomeCounter();
       }
-
-      return new AtomicInteger();
-    }).addAndGet(value);
+      counter = tagListToCounter.putIfAbsent(tagList, new AtomicInteger(value));
+      if (counter == null) {
+        return;
+      }
+    }
+    counter.addAndGet(value);
   }
 
   private void removeSomeCounter() {
