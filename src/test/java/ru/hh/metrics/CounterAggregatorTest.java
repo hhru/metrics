@@ -24,7 +24,7 @@ public class CounterAggregatorTest {
   @Test
   public void sendMetricsOneValue() {
     Tag tag = new Tag("label", "first");
-    counterAggregator.increaseMetric(5, tag);
+    counterAggregator.add(5, tag);
     Map<List<Tag>, Integer> tagsToValue;
     List<Tag> tags = singletonList(tag);
 
@@ -42,8 +42,8 @@ public class CounterAggregatorTest {
 
   @Test
   public void sendMetricsDifferentOrderOfTags() {
-    counterAggregator.increaseMetric(5, new Tag("label", "first"), new Tag("notlabel", "a"));
-    counterAggregator.increaseMetric(3, new Tag("notlabel", "a"), new Tag("label", "first"));
+    counterAggregator.add(5, new Tag("label", "first"), new Tag("notlabel", "a"));
+    counterAggregator.add(3, new Tag("notlabel", "a"), new Tag("label", "first"));
 
     Map<List<Tag>, Integer> expectedSnapshot = new HashMap<>();
     expectedSnapshot.put(asList(new Tag("label", "first"), new Tag("notlabel", "a")), 8);
@@ -53,10 +53,10 @@ public class CounterAggregatorTest {
 
   @Test
   public void sendMetricsTwoTags() {
-    counterAggregator.increaseMetric(5, new Tag("label", "first"), new Tag("region", "vacancy"));
-    counterAggregator.increaseMetric(2, new Tag("label", "first"), new Tag("region", "resume"));
-    counterAggregator.increaseMetric(6, new Tag("label", "second"), new Tag("region", "resume"));
-    counterAggregator.increaseMetric(11, new Tag("label", "third"), new Tag("region", "resume"));
+    counterAggregator.add(5, new Tag("label", "first"), new Tag("region", "vacancy"));
+    counterAggregator.add(2, new Tag("label", "first"), new Tag("region", "resume"));
+    counterAggregator.add(6, new Tag("label", "second"), new Tag("region", "resume"));
+    counterAggregator.add(11, new Tag("label", "third"), new Tag("region", "resume"));
 
     Map<List<Tag>, Integer> expectedSnapshot = new HashMap<>();
     expectedSnapshot.put(asList(new Tag("label", "first"), new Tag("region", "vacancy")), 5);
@@ -74,7 +74,7 @@ public class CounterAggregatorTest {
     List<Tag> tags = singletonList(tag);
     Runnable increaseMetricTask = () -> {
       for (int i = 0; i < increases; i++) {
-        counterAggregator.increaseMetric(1, tag);
+        counterAggregator.add(1, tag);
       }
     };
 
@@ -87,7 +87,7 @@ public class CounterAggregatorTest {
       increaseMetricThread.start();
 
       for (int i = 0; i < increases; i++) {
-        counterAggregator.increaseMetric(1, tag);
+        counterAggregator.add(1, tag);
         if (i % 1000 == 0) {
           snapshots.add(counterAggregator.getSnapshotAndReset());
         }

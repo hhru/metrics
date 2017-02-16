@@ -21,16 +21,16 @@ public class PercentileAggregatorTest {
   @Test
   public void increaseMetricValueStatsShouldBeSend() throws InterruptedException {
     for (int i = 0; i < 50; i++) {
-      percentileAggregator.increaseMetric(100, new Tag("targetServer", "localhost"));
+      percentileAggregator.save(100, new Tag("targetServer", "localhost"));
     }
     for (int i = 0; i < 45; i++) {
-      percentileAggregator.increaseMetric(200, new Tag("targetServer", "localhost"));
+      percentileAggregator.save(200, new Tag("targetServer", "localhost"));
     }
     for (int i = 0; i < 2; i++) {
-      percentileAggregator.increaseMetric(300, new Tag("targetServer", "localhost"));
+      percentileAggregator.save(300, new Tag("targetServer", "localhost"));
     }
     for (int i = 0; i < 2; i++) {
-      percentileAggregator.increaseMetric(400, new Tag("targetServer", "localhost"));
+      percentileAggregator.save(400, new Tag("targetServer", "localhost"));
     }
 
     Map<List<Tag>, Integer> expectedSnapshot = new HashMap<>();
@@ -49,7 +49,7 @@ public class PercentileAggregatorTest {
 
   @Test
   public void sendPercentilesOneValue() {
-    percentileAggregator.increaseMetric(1, new Tag("targetServer", "localhost"));
+    percentileAggregator.save(1, new Tag("targetServer", "localhost"));
 
     Map<List<Tag>, Integer> expectedSnapshot = new HashMap<>();
     expectedSnapshot.put(asList(new Tag("targetServer", "localhost"), new Tag("percentile", "50")), 1);
@@ -62,8 +62,8 @@ public class PercentileAggregatorTest {
 
   @Test
   public void sendPercentilesTwoValues() {
-    percentileAggregator.increaseMetric(1, new Tag("targetServer", "localhost"));
-    percentileAggregator.increaseMetric(2, new Tag("targetServer", "localhost"));
+    percentileAggregator.save(1, new Tag("targetServer", "localhost"));
+    percentileAggregator.save(2, new Tag("targetServer", "localhost"));
 
     Map<List<Tag>, Integer> expectedSnapshot = new HashMap<>();
     expectedSnapshot.put(asList(new Tag("targetServer", "localhost"), new Tag("percentile", "50")), 1);
@@ -76,8 +76,8 @@ public class PercentileAggregatorTest {
 
   @Test
   public void sendPercentilesTwoTargetServers() {
-    percentileAggregator.increaseMetric(1, new Tag("targetServer", "localhost"));
-    percentileAggregator.increaseMetric(2, new Tag("targetServer", "google"));
+    percentileAggregator.save(1, new Tag("targetServer", "localhost"));
+    percentileAggregator.save(2, new Tag("targetServer", "google"));
 
     Map<List<Tag>, Integer> expectedSnapshot = new HashMap<>();
     expectedSnapshot.put(asList(new Tag("targetServer", "localhost"), new Tag("percentile", "50")), 1);
@@ -94,10 +94,10 @@ public class PercentileAggregatorTest {
 
   @Test
   public void sendPercentilesTwoTags() {
-    percentileAggregator.increaseMetric(1, new Tag("targetServer", "localhost"), new Tag("key", "one"));
-    percentileAggregator.increaseMetric(2, new Tag("targetServer", "google"), new Tag("key", "two"));
-    percentileAggregator.increaseMetric(3, new Tag("targetServer", "localhost"), new Tag("key", "two"));
-    percentileAggregator.increaseMetric(4, new Tag("targetServer", "google"), new Tag("key", "three"));
+    percentileAggregator.save(1, new Tag("targetServer", "localhost"), new Tag("key", "one"));
+    percentileAggregator.save(2, new Tag("targetServer", "google"), new Tag("key", "two"));
+    percentileAggregator.save(3, new Tag("targetServer", "localhost"), new Tag("key", "two"));
+    percentileAggregator.save(4, new Tag("targetServer", "google"), new Tag("key", "three"));
 
     Map<List<Tag>, Integer> expectedSnapshot = new HashMap<>();
     expectedSnapshot.put(asList(new Tag("key", "one"), new Tag("targetServer", "localhost"), new Tag("percentile", "50")), 1);
@@ -122,9 +122,9 @@ public class PercentileAggregatorTest {
 
   @Test
   public void sendPercentilesTwoTargetServerDifferentOrder() {
-    percentileAggregator.increaseMetric(1, new Tag("targetServer", "localhost"), new Tag("key", "one"));
-    percentileAggregator.increaseMetric(1, new Tag("targetServer", "localhost"), new Tag("key", "one"));
-    percentileAggregator.increaseMetric(3, new Tag("key", "one"), new Tag("targetServer", "localhost"));
+    percentileAggregator.save(1, new Tag("targetServer", "localhost"), new Tag("key", "one"));
+    percentileAggregator.save(1, new Tag("targetServer", "localhost"), new Tag("key", "one"));
+    percentileAggregator.save(3, new Tag("key", "one"), new Tag("targetServer", "localhost"));
 
     Map<List<Tag>, Integer> expectedSnapshot = new HashMap<>();
     expectedSnapshot.put(asList(new Tag("key", "one"), new Tag("targetServer", "localhost"), new Tag("percentile", "50")), 1);
@@ -144,11 +144,11 @@ public class PercentileAggregatorTest {
     increaseMetricInThread.start();
 
     for (int i = 0; i < 495000; i++) {
-      percentileAggregator.increaseMetric(1, new Tag("targetServer", "localhost"));
+      percentileAggregator.save(1, new Tag("targetServer", "localhost"));
     }
     increaseMetricInThread.join();
     for (int i = 0; i < 10000; i++) {
-      percentileAggregator.increaseMetric(2, new Tag("targetServer", "localhost"));
+      percentileAggregator.save(2, new Tag("targetServer", "localhost"));
     }
 
     Map<List<Tag>, Integer> expectedSnapshot = new HashMap<>();
@@ -172,7 +172,7 @@ public class PercentileAggregatorTest {
     @Override
     public void run() {
       for (int i = 0; i < 495000; i++) {
-        percentileAggregator.increaseMetric(metricValue, tags);
+        percentileAggregator.save(metricValue, tags);
       }
     }
   }

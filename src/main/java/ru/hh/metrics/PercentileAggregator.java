@@ -30,7 +30,7 @@ public class PercentileAggregator {
     this.maxNumOfDifferentTags = maxNumOfDifferentTags;
   }
 
-  public void increaseMetric(int metricValue, Tag... tags) {
+  public void save(int value, Tag... tags) {
     List<Tag> tagList = Arrays.asList(tags);
     Collections.sort(tagList);
     Map<Integer, LongAdder> metricValuesHistogram = tagListToMetricValuesHistogram.computeIfAbsent(
@@ -44,7 +44,7 @@ public class PercentileAggregator {
             });
 
     if (metricValuesHistogram != null) {
-      LongAdder metricValueCounter = metricValuesHistogram.computeIfAbsent(metricValue, key -> {
+      LongAdder metricValueCounter = metricValuesHistogram.computeIfAbsent(value, key -> {
         if (metricValuesHistogram.size() >= maxHistogramSize) {
           logger.error("Max number of different duration values reached, dropping observation for tagList {}", tagList.toString());
           return null;

@@ -20,7 +20,7 @@ public class CounterAggregator {
     this.maxNumOfDifferentTags = maxNumOfDifferentTags;
   }
 
-  public void increaseMetric(int metricValue, Tag... tags) {
+  public void add(int value, Tag... tags) {
     List<Tag> tagList = Arrays.asList(tags);
     Collections.sort(tagList);
     tagListToCounter.computeIfAbsent(tagList, key -> {
@@ -29,7 +29,7 @@ public class CounterAggregator {
       }
 
       return new AtomicInteger();
-    }).addAndGet(metricValue);
+    }).addAndGet(value);
   }
 
   private void removeSomeCounter() {
