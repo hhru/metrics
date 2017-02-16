@@ -71,7 +71,7 @@ public class CounterAggregatorPerfTest {
     Map<Tags, Integer> tagsToValue = merge(snapshots);
     for (int i = 0; i<tagValues.length; i++) {
       int expected = increases * 2 / tagValues.length;
-      int actual = tagsToValue.get(new Tags(new Tag[]{createTag(i)}));
+      int actual = tagsToValue.get(createTag(i));
       if (actual != expected) {
         throw new IllegalStateException("tag " + i + " expected " + expected + " got " + actual);
       }

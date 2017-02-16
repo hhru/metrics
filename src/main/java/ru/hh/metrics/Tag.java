@@ -1,6 +1,6 @@
 package ru.hh.metrics;
 
-public class Tag implements Comparable<Tag> {
+public class Tag extends Tags implements Comparable<Tag> {
   public final String name;
   public final String value;
 
@@ -36,5 +36,10 @@ public class Tag implements Comparable<Tag> {
     int result = name.hashCode();
     result = 31 * result + value.hashCode();
     return result;
+  }
+
+  @Override
+  Tag[] getTags() {
+    return new Tag[]{this};
   }
 }
