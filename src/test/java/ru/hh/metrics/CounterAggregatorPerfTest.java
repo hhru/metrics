@@ -56,7 +56,7 @@ public class CounterAggregatorPerfTest {
     System.out.println("CounterAggregator " + testIteration + " " + (currentTimeMillis() - start) + " ms");
 
     snapshots.add(counterAggregator.getSnapshotAndReset());
-//    checkSnapshots(snapshots);
+    checkSnapshots(snapshots);
   }
 
   private static void add(CounterAggregator counterAggregator, int iteration) {
