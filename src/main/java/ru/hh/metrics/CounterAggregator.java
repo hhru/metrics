@@ -3,14 +3,15 @@ package ru.hh.metrics;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.LongAdder;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class CounterAggregator {
   private static final Logger logger = LoggerFactory.getLogger(CounterAggregator.class);
 
-  private final Map<Tags, AtomicInteger> tagsToCounter = new ConcurrentHashMap<>();
+  private final Map<Tags, LongAdder> tagsToCounter = new ConcurrentHashMap<>();
   private final int maxNumOfDifferentTags;
 
   public CounterAggregator(int maxNumOfDifferentTags) {
@@ -26,24 +27,26 @@ public class CounterAggregator {
   }
 
   private void addInner(int value, Tags tags) {
-    AtomicInteger counter = tagsToCounter.get(tags);
+    LongAdder counter = tagsToCounter.get(tags);
     if (counter == null) {
       if (tagsToCounter.size() >= maxNumOfDifferentTags) {
         removeSomeCounter();
       }
-      counter = tagsToCounter.putIfAbsent(tags, new AtomicInteger(value));
+      counter = new LongAdder();
+      counter.add(value);
+      counter = tagsToCounter.putIfAbsent(tags, counter);
       if (counter == null) {
         return;
       }
     }
-    counter.addAndGet(value);
+    counter.add(value);
   }
 
   private void removeSomeCounter() {
     int minValue = Integer.MAX_VALUE;
     Tags tagsToRemove = null;
 
-    for (Map.Entry<Tags, AtomicInteger> entry : tagsToCounter.entrySet()) {
+    for (Map.Entry<Tags, LongAdder> entry : tagsToCounter.entrySet()) {
       int curValue = entry.getValue().intValue();
       if (curValue < minValue) {
         tagsToRemove = entry.getKey();
@@ -58,11 +61,11 @@ public class CounterAggregator {
   public Map<Tags, Integer> getSnapshotAndReset() {
     Map<Tags, Integer> tagsToCountSnapshot = new HashMap<>();
     for (Tags tags : tagsToCounter.keySet()) {
-      tagsToCounter.compute(tags, (key, atomicInteger) -> {
-        int value = atomicInteger.getAndSet(0);
+      tagsToCounter.compute(tags, (key, counter) -> {
+        int value = (int) counter.sumThenReset();
         tagsToCountSnapshot.put(key, value);
         if (value > 0) {
-          return atomicInteger;
+          return counter;
         } else {
           return null;
         }
