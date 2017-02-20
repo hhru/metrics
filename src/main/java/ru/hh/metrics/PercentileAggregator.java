@@ -1,89 +1,99 @@
 package ru.hh.metrics;
 
-import java.util.ArrayList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.LongAdder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class PercentileAggregator {
   private static final Logger logger = LoggerFactory.getLogger(PercentileAggregator.class);
 
   private final int maxHistogramSize;
-  private final Map<List<Tag>, Map<Integer, LongAdder>> tagListToMetricValuesHistogram = new ConcurrentHashMap<>();
-  private final List<Double> chances;
+  private final Map<Tags, Map<Integer, LongAdder>> tagsToHistogram = new ConcurrentHashMap<>();
+  private final Double[] chances;
   private final int maxNumOfDifferentTags;
 
   public PercentileAggregator() {
-    this(1000, Arrays.asList(0.5, 0.97, 0.99, 1.0), 20);
+    this(1000, new Double[]{0.5, 0.97, 0.99, 1.0}, 20);
   }
 
-  public PercentileAggregator(int maxHistogramSize, List<Double> chances, int maxNumOfDifferentTags) {
+  public PercentileAggregator(int maxHistogramSize, Double[] chances, int maxNumOfDifferentTags) {
     this.maxHistogramSize = maxHistogramSize;
     this.chances = chances;
     this.maxNumOfDifferentTags = maxNumOfDifferentTags;
   }
 
-  public void save(int value, Tag... tags) {
-    List<Tag> tagList = Arrays.asList(tags);
-    Collections.sort(tagList);
-    Map<Integer, LongAdder> metricValuesHistogram = tagListToMetricValuesHistogram.computeIfAbsent(
-            tagList, key -> {
-              if (tagListToMetricValuesHistogram.size() >= maxNumOfDifferentTags) {
-                logger.error("Max number of different tags reached, dropping observation");
-                return null;
-              } else {
-                return new ConcurrentHashMap<>();
-              }
-            });
-
-    if (metricValuesHistogram != null) {
-      LongAdder metricValueCounter = metricValuesHistogram.computeIfAbsent(value, key -> {
-        if (metricValuesHistogram.size() >= maxHistogramSize) {
-          logger.error("Max number of different duration values reached, dropping observation for tagList {}", tagList.toString());
-          return null;
-        }
-        return new LongAdder();
-      });
-      if (metricValueCounter != null) {
-        metricValueCounter.increment();
-      }
-    }
+  public void save(int value, Tag tag) {
+    saveInner(value, tag);
   }
 
-  public Map<List<Tag>, Integer> getSnapshotAndReset() {
-    Map<List<Tag>, Integer> tagListToMetricValueSnapshot = new HashMap<>();
-    for (List<Tag> tagList : tagListToMetricValuesHistogram.keySet()) {
-      Map<Integer, LongAdder> metricValuesHistogram = tagListToMetricValuesHistogram.remove(tagList);
-      int totalObservations = metricValuesHistogram.values().stream()
+  public void save(int value, Tag... tags) {
+    saveInner(value, new MultiTags(tags));
+  }
+
+  private void saveInner(int value, Tags tags) {
+    Map<Integer, LongAdder> histogram = tagsToHistogram.get(tags);
+    if (histogram == null) {
+      if (tagsToHistogram.size() >= maxNumOfDifferentTags) {
+        logger.error("Max number of different tags reached, dropping observation");
+        return;
+      }
+      histogram = new ConcurrentHashMap<>();
+      Map<Integer, LongAdder> currentHistogram = tagsToHistogram.putIfAbsent(tags, histogram);
+      if (currentHistogram != null) {
+        histogram = currentHistogram;
+      }
+    }
+
+    LongAdder counter = histogram.get(value);
+    if (counter == null) {
+      if (histogram.size() >= maxHistogramSize) {
+        logger.error("Max number of different histogram values reached, dropping observation for {}", tags);
+        return;
+      }
+      counter = new LongAdder();
+      LongAdder currentCounter = histogram.putIfAbsent(value, counter);
+      if (currentCounter != null) {
+        counter = currentCounter;
+      }
+    }
+    counter.increment();
+  }
+
+  public Map<Tags, Integer> getSnapshotAndReset() {
+    Map<Tags, Integer> tagsToValueSnapshot = new HashMap<>();
+    for (Tags tags : tagsToHistogram.keySet()) {
+      Map<Integer, LongAdder> histogram = tagsToHistogram.remove(tags);
+      // TODO: wait until all threads stop writing to the histogram
+      int totalObservations = histogram.values().stream()
           .mapToInt(LongAdder::intValue)
           .sum();
 
       int currentObservations = 0;
       int currentChanceIndex = 0;
 
-      Iterator<Map.Entry<Integer, LongAdder>> it = metricValuesHistogram.entrySet().stream()
+      Iterator<Map.Entry<Integer, LongAdder>> it = histogram.entrySet().stream()
           .sorted(Map.Entry.comparingByKey())
           .iterator();
       while (it.hasNext()) {
         Map.Entry<Integer, LongAdder> metricValueToCountEntry = it.next();
 
         currentObservations += metricValueToCountEntry.getValue().intValue();
-        for (; currentChanceIndex < chances.size() && totalObservations * chances.get(currentChanceIndex) <= currentObservations;
+        for (; currentChanceIndex < chances.length && totalObservations * chances[currentChanceIndex] <= currentObservations;
              currentChanceIndex++) {
-          List<Tag> tagListWithPercentile = new ArrayList<>(tagList);
-          tagListWithPercentile.add(new Tag("percentile", String.valueOf((int) (100 * chances.get(currentChanceIndex)))));
-          tagListToMetricValueSnapshot.put(tagListWithPercentile, metricValueToCountEntry.getKey());
+          Tag[] tagsWithPercentile = Arrays.copyOf(tags.getTags(), tags.getTags().length + 1);
+          tagsWithPercentile[tagsWithPercentile.length-1] =
+            new Tag("percentile", String.valueOf((int) (100 * chances[currentChanceIndex])));
+          tagsToValueSnapshot.put(new MultiTags(tagsWithPercentile), metricValueToCountEntry.getKey());
         }
       }
     }
 
-    return tagListToMetricValueSnapshot;
+    return tagsToValueSnapshot;
   }
 }
