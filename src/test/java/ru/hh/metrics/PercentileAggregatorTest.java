@@ -1,25 +1,19 @@
 package ru.hh.metrics;
 
-import static java.util.Arrays.asList;
-import static java.util.Collections.emptyMap;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import static org.junit.Assert.assertEquals;
-import org.junit.Before;
 import org.junit.Test;
+
+import java.util.Map;
+
+import static java.util.Collections.emptyMap;
+import static org.junit.Assert.assertEquals;
+import static ru.hh.metrics.TestUtils.tagsOf;
 
 public class PercentileAggregatorTest {
 
-  private static PercentileAggregator percentileAggregator = new PercentileAggregator();;
-
-  @Before
-  public void setUp() {
-    percentileAggregator = new PercentileAggregator();
-  }
+  private final PercentileAggregator percentileAggregator = new PercentileAggregator();
 
   @Test
-  public void increaseMetricValueStatsShouldBeSend() throws InterruptedException {
+  public void differentValues() throws InterruptedException {
     for (int i = 0; i < 50; i++) {
       percentileAggregator.save(100, new Tag("targetServer", "localhost"));
     }
@@ -33,110 +27,128 @@ public class PercentileAggregatorTest {
       percentileAggregator.save(400, new Tag("targetServer", "localhost"));
     }
 
-    Map<List<Tag>, Integer> expectedSnapshot = new HashMap<>();
-    expectedSnapshot.put(asList(new Tag("targetServer", "localhost"), new Tag("percentile", "50")), 100);
-    expectedSnapshot.put(asList(new Tag("targetServer", "localhost"), new Tag("percentile", "97")), 300);
-    expectedSnapshot.put(asList(new Tag("targetServer", "localhost"), new Tag("percentile", "99")), 400);
-    expectedSnapshot.put(asList(new Tag("targetServer", "localhost"), new Tag("percentile", "100")), 400);
+    Map<Tags, Integer> tagsToValue = percentileAggregator.getSnapshotAndReset();
 
-    assertEquals(expectedSnapshot, percentileAggregator.getSnapshotAndReset());
+    assertEquals(4, tagsToValue.size());
+    assertEquals(
+        100,
+        tagsToValue.get(tagsOf(new Tag("targetServer", "localhost"), new Tag("percentile", "50"))).intValue()
+    );
+    assertEquals(
+        300,
+        tagsToValue.get(tagsOf(new Tag("targetServer", "localhost"), new Tag("percentile", "97"))).intValue()
+    );
+    assertEquals(
+        400,
+        tagsToValue.get(tagsOf(new Tag("targetServer", "localhost"), new Tag("percentile", "99"))).intValue()
+    );
+    assertEquals(
+        400,
+        tagsToValue.get(tagsOf(new Tag("targetServer", "localhost"), new Tag("percentile", "100"))).intValue()
+    );
   }
 
   @Test
-  public void sendPercentilesWithoutValues() {
+  public void noValue() {
     assertEquals(emptyMap(), percentileAggregator.getSnapshotAndReset());
   }
 
   @Test
-  public void sendPercentilesOneValue() {
+  public void oneValue() {
     percentileAggregator.save(1, new Tag("targetServer", "localhost"));
 
-    Map<List<Tag>, Integer> expectedSnapshot = new HashMap<>();
-    expectedSnapshot.put(asList(new Tag("targetServer", "localhost"), new Tag("percentile", "50")), 1);
-    expectedSnapshot.put(asList(new Tag("targetServer", "localhost"), new Tag("percentile", "97")), 1);
-    expectedSnapshot.put(asList(new Tag("targetServer", "localhost"), new Tag("percentile", "99")), 1);
-    expectedSnapshot.put(asList(new Tag("targetServer", "localhost"), new Tag("percentile", "100")), 1);
+    Map<Tags, Integer> tagsToValue = percentileAggregator.getSnapshotAndReset();
 
-    assertEquals(expectedSnapshot, percentileAggregator.getSnapshotAndReset());
+    assertEquals(4, tagsToValue.size());
+    assertEquals(
+        1,
+        tagsToValue.get(tagsOf(new Tag("targetServer", "localhost"), new Tag("percentile", "50"))).intValue()
+    );
+    assertEquals(
+        1,
+        tagsToValue.get(tagsOf(new Tag("targetServer", "localhost"), new Tag("percentile", "97"))).intValue()
+    );
+    assertEquals(
+        1,
+        tagsToValue.get(tagsOf(new Tag("targetServer", "localhost"), new Tag("percentile", "99"))).intValue()
+    );
+    assertEquals(
+        1,
+        tagsToValue.get(tagsOf(new Tag("targetServer", "localhost"), new Tag("percentile", "100"))).intValue()
+    );
   }
 
   @Test
-  public void sendPercentilesTwoValues() {
-    percentileAggregator.save(1, new Tag("targetServer", "localhost"));
-    percentileAggregator.save(2, new Tag("targetServer", "localhost"));
-
-    Map<List<Tag>, Integer> expectedSnapshot = new HashMap<>();
-    expectedSnapshot.put(asList(new Tag("targetServer", "localhost"), new Tag("percentile", "50")), 1);
-    expectedSnapshot.put(asList(new Tag("targetServer", "localhost"), new Tag("percentile", "97")), 2);
-    expectedSnapshot.put(asList(new Tag("targetServer", "localhost"), new Tag("percentile", "99")), 2);
-    expectedSnapshot.put(asList(new Tag("targetServer", "localhost"), new Tag("percentile", "100")), 2);
-
-    assertEquals(expectedSnapshot, percentileAggregator.getSnapshotAndReset());
-  }
-
-  @Test
-  public void sendPercentilesTwoTargetServers() {
-    percentileAggregator.save(1, new Tag("targetServer", "localhost"));
-    percentileAggregator.save(2, new Tag("targetServer", "google"));
-
-    Map<List<Tag>, Integer> expectedSnapshot = new HashMap<>();
-    expectedSnapshot.put(asList(new Tag("targetServer", "localhost"), new Tag("percentile", "50")), 1);
-    expectedSnapshot.put(asList(new Tag("targetServer", "localhost"), new Tag("percentile", "97")), 1);
-    expectedSnapshot.put(asList(new Tag("targetServer", "localhost"), new Tag("percentile", "99")), 1);
-    expectedSnapshot.put(asList(new Tag("targetServer", "localhost"), new Tag("percentile", "100")), 1);
-    expectedSnapshot.put(asList(new Tag("targetServer", "google"), new Tag("percentile", "50")), 2);
-    expectedSnapshot.put(asList(new Tag("targetServer", "google"), new Tag("percentile", "97")), 2);
-    expectedSnapshot.put(asList(new Tag("targetServer", "google"), new Tag("percentile", "99")), 2);
-    expectedSnapshot.put(asList(new Tag("targetServer", "google"), new Tag("percentile", "100")), 2);
-
-    assertEquals(expectedSnapshot, percentileAggregator.getSnapshotAndReset());
-  }
-
-  @Test
-  public void sendPercentilesTwoTags() {
+  public void twoTags() {
     percentileAggregator.save(1, new Tag("targetServer", "localhost"), new Tag("key", "one"));
     percentileAggregator.save(2, new Tag("targetServer", "google"), new Tag("key", "two"));
     percentileAggregator.save(3, new Tag("targetServer", "localhost"), new Tag("key", "two"));
     percentileAggregator.save(4, new Tag("targetServer", "google"), new Tag("key", "three"));
 
-    Map<List<Tag>, Integer> expectedSnapshot = new HashMap<>();
-    expectedSnapshot.put(asList(new Tag("key", "one"), new Tag("targetServer", "localhost"), new Tag("percentile", "50")), 1);
-    expectedSnapshot.put(asList(new Tag("key", "one"), new Tag("targetServer", "localhost"), new Tag("percentile", "97")), 1);
-    expectedSnapshot.put(asList(new Tag("key", "one"), new Tag("targetServer", "localhost"), new Tag("percentile", "99")), 1);
-    expectedSnapshot.put(asList(new Tag("key", "one"), new Tag("targetServer", "localhost"), new Tag("percentile", "100")), 1);
-    expectedSnapshot.put(asList(new Tag("key", "two"), new Tag("targetServer", "localhost"), new Tag("percentile", "50")), 3);
-    expectedSnapshot.put(asList(new Tag("key", "two"), new Tag("targetServer", "localhost"), new Tag("percentile", "97")), 3);
-    expectedSnapshot.put(asList(new Tag("key", "two"), new Tag("targetServer", "localhost"), new Tag("percentile", "99")), 3);
-    expectedSnapshot.put(asList(new Tag("key", "two"), new Tag("targetServer", "localhost"), new Tag("percentile", "100")), 3);
-    expectedSnapshot.put(asList(new Tag("key", "two"), new Tag("targetServer", "google"), new Tag("percentile", "50")), 2);
-    expectedSnapshot.put(asList(new Tag("key", "two"), new Tag("targetServer", "google"), new Tag("percentile", "97")), 2);
-    expectedSnapshot.put(asList(new Tag("key", "two"), new Tag("targetServer", "google"), new Tag("percentile", "99")), 2);
-    expectedSnapshot.put(asList(new Tag("key", "two"), new Tag("targetServer", "google"), new Tag("percentile", "100")), 2);
-    expectedSnapshot.put(asList(new Tag("key", "three"), new Tag("targetServer", "google"), new Tag("percentile", "50")), 4);
-    expectedSnapshot.put(asList(new Tag("key", "three"), new Tag("targetServer", "google"), new Tag("percentile", "97")), 4);
-    expectedSnapshot.put(asList(new Tag("key", "three"), new Tag("targetServer", "google"), new Tag("percentile", "99")), 4);
-    expectedSnapshot.put(asList(new Tag("key", "three"), new Tag("targetServer", "google"), new Tag("percentile", "100")), 4);
+    Map<Tags, Integer> tagsToValue = percentileAggregator.getSnapshotAndReset();
 
-    assertEquals(expectedSnapshot, percentileAggregator.getSnapshotAndReset());
+    assertEquals(
+        1,
+        tagsToValue.get(tagsOf(new Tag("key", "one"), new Tag("targetServer", "localhost"), new Tag("percentile", "50"))).intValue()
+    );
+    assertEquals(
+        1,
+        tagsToValue.get(tagsOf(new Tag("key", "one"), new Tag("targetServer", "localhost"), new Tag("percentile", "100"))).intValue()
+    );
+    assertEquals(
+        3,
+        tagsToValue.get(tagsOf(new Tag("key", "two"), new Tag("targetServer", "localhost"), new Tag("percentile", "50"))).intValue()
+    );
+    assertEquals(
+        3,
+        tagsToValue.get(tagsOf(new Tag("key", "two"), new Tag("targetServer", "localhost"), new Tag("percentile", "100"))).intValue()
+    );
+    assertEquals(
+        2,
+        tagsToValue.get(tagsOf(new Tag("key", "two"), new Tag("targetServer", "google"), new Tag("percentile", "50"))).intValue()
+    );
+    assertEquals(
+        2,
+        tagsToValue.get(tagsOf(new Tag("key", "two"), new Tag("targetServer", "google"), new Tag("percentile", "100"))).intValue()
+    );
+    assertEquals(
+        4,
+        tagsToValue.get(tagsOf(new Tag("key", "three"), new Tag("targetServer", "google"), new Tag("percentile", "50"))).intValue()
+    );
+    assertEquals(
+        4,
+        tagsToValue.get(tagsOf(new Tag("key", "three"), new Tag("targetServer", "google"), new Tag("percentile", "100"))).intValue()
+    );
   }
 
   @Test
-  public void sendPercentilesTwoTargetServerDifferentOrder() {
+  public void tagsInDifferentOrder() {
     percentileAggregator.save(1, new Tag("targetServer", "localhost"), new Tag("key", "one"));
     percentileAggregator.save(1, new Tag("targetServer", "localhost"), new Tag("key", "one"));
     percentileAggregator.save(3, new Tag("key", "one"), new Tag("targetServer", "localhost"));
 
-    Map<List<Tag>, Integer> expectedSnapshot = new HashMap<>();
-    expectedSnapshot.put(asList(new Tag("key", "one"), new Tag("targetServer", "localhost"), new Tag("percentile", "50")), 1);
-    expectedSnapshot.put(asList(new Tag("key", "one"), new Tag("targetServer", "localhost"), new Tag("percentile", "97")), 3);
-    expectedSnapshot.put(asList(new Tag("key", "one"), new Tag("targetServer", "localhost"), new Tag("percentile", "99")), 3);
-    expectedSnapshot.put(asList(new Tag("key", "one"), new Tag("targetServer", "localhost"), new Tag("percentile", "100")), 3);
+    Map<Tags, Integer> tagsToValue = percentileAggregator.getSnapshotAndReset();
 
-    assertEquals(expectedSnapshot, percentileAggregator.getSnapshotAndReset());
+    assertEquals(
+        1,
+        tagsToValue.get(tagsOf(new Tag("key", "one"), new Tag("targetServer", "localhost"), new Tag("percentile", "50"))).intValue()
+    );
+    assertEquals(
+        3,
+        tagsToValue.get(tagsOf(new Tag("key", "one"), new Tag("targetServer", "localhost"), new Tag("percentile", "97"))).intValue()
+    );
+    assertEquals(
+        3,
+        tagsToValue.get(tagsOf(new Tag("key", "one"), new Tag("targetServer", "localhost"), new Tag("percentile", "99"))).intValue()
+    );
+    assertEquals(
+        3,
+        tagsToValue.get(tagsOf(new Tag("key", "one"), new Tag("targetServer", "localhost"), new Tag("percentile", "100"))).intValue()
+    );
   }
 
   @Test
-  public void sendMetricsTwoThreads() throws InterruptedException {
+  public void twoThreads() throws InterruptedException {
 
     IncreaseMetricInThread increaseMetricInThread =
             new IncreaseMetricInThread(1, new Tag("targetServer", "localhost"));
@@ -146,18 +158,15 @@ public class PercentileAggregatorTest {
     for (int i = 0; i < 495000; i++) {
       percentileAggregator.save(1, new Tag("targetServer", "localhost"));
     }
+    percentileAggregator.save(2, new Tag("targetServer", "localhost"));
     increaseMetricInThread.join();
-    for (int i = 0; i < 10000; i++) {
-      percentileAggregator.save(2, new Tag("targetServer", "localhost"));
-    }
 
-    Map<List<Tag>, Integer> expectedSnapshot = new HashMap<>();
-    expectedSnapshot.put(asList(new Tag("targetServer", "localhost"), new Tag("percentile", "50")), 1);
-    expectedSnapshot.put(asList(new Tag("targetServer", "localhost"), new Tag("percentile", "97")), 1);
-    expectedSnapshot.put(asList(new Tag("targetServer", "localhost"), new Tag("percentile", "99")), 1);
-    expectedSnapshot.put(asList(new Tag("targetServer", "localhost"), new Tag("percentile", "100")), 2);
+    Map<Tags, Integer> tagsToValue = percentileAggregator.getSnapshotAndReset();
 
-    assertEquals(expectedSnapshot, percentileAggregator.getSnapshotAndReset());
+    assertEquals(1, tagsToValue.get(tagsOf(new Tag("targetServer", "localhost"), new Tag("percentile", "50"))).intValue());
+    assertEquals(1, tagsToValue.get(tagsOf(new Tag("targetServer", "localhost"), new Tag("percentile", "97"))).intValue());
+    assertEquals(1, tagsToValue.get(tagsOf(new Tag("targetServer", "localhost"), new Tag("percentile", "99"))).intValue());
+    assertEquals(2, tagsToValue.get(tagsOf(new Tag("targetServer", "localhost"), new Tag("percentile", "100"))).intValue());
   }
 
   class IncreaseMetricInThread extends Thread {

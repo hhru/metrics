@@ -9,6 +9,7 @@ import java.util.Map;
 import static java.lang.System.currentTimeMillis;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static ru.hh.metrics.TestUtils.tagsOf;
 
 public class CounterAggregatorTest {
   private final CounterAggregator counterAggregator = new CounterAggregator(300);
@@ -44,7 +45,7 @@ public class CounterAggregatorTest {
     Map<Tags, Integer> tagsToCount = counterAggregator.getSnapshotAndReset();
 
     assertEquals(1, tagsToCount.size());
-    assertEquals(8, tagsToCount.get(new MultiTags(new Tag[]{new Tag("label", "first"), new Tag("notlabel", "a")})).intValue());
+    assertEquals(8, tagsToCount.get(tagsOf(new Tag("label", "first"), new Tag("notlabel", "a"))).intValue());
   }
 
   @Test
@@ -57,10 +58,10 @@ public class CounterAggregatorTest {
     Map<Tags, Integer> tagsToCount = counterAggregator.getSnapshotAndReset();
 
     assertEquals(4, tagsToCount.size());
-    assertEquals(5, tagsToCount.get(new MultiTags(new Tag[]{new Tag("label", "first"), new Tag("region", "vacancy")})).intValue());
-    assertEquals(2, tagsToCount.get(new MultiTags(new Tag[]{new Tag("label", "first"), new Tag("region", "resume")})).intValue());
-    assertEquals(6, tagsToCount.get(new MultiTags(new Tag[]{new Tag("label", "second"), new Tag("region", "resume")})).intValue());
-    assertEquals(11, tagsToCount.get(new MultiTags(new Tag[]{new Tag("label", "third"), new Tag("region", "resume")})).intValue());
+    assertEquals(5, tagsToCount.get(tagsOf(new Tag("label", "first"), new Tag("region", "vacancy"))).intValue());
+    assertEquals(2, tagsToCount.get(tagsOf(new Tag("label", "first"), new Tag("region", "resume"))).intValue());
+    assertEquals(6, tagsToCount.get(tagsOf(new Tag("label", "second"), new Tag("region", "resume"))).intValue());
+    assertEquals(11, tagsToCount.get(tagsOf(new Tag("label", "third"), new Tag("region", "resume"))).intValue());
   }
 
   @Test

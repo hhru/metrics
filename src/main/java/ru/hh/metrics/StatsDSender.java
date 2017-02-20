@@ -1,7 +1,6 @@
 package ru.hh.metrics;
 
 import com.timgroup.statsd.StatsDClient;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -28,9 +27,9 @@ public class StatsDSender {
   }
 
   private void sendPercentilesMetric(String metricName, PercentileAggregator percentileAggregator) {
-    Map<List<Tag>, Integer> percentileAggregatorSnapshot = percentileAggregator.getSnapshotAndReset();
+    Map<Tags, Integer> percentileAggregatorSnapshot = percentileAggregator.getSnapshotAndReset();
     percentileAggregatorSnapshot.forEach((tags, percentileValue) -> {
-      String tagsString = getTagString(tags.toArray(new Tag[tags.size()]));
+      String tagsString = getTagString(tags.getTags());
       statsDClient.gauge(metricName + "." + tagsString, percentileValue);
     });
   }
