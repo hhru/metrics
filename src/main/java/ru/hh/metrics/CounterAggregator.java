@@ -58,15 +58,12 @@ public class CounterAggregator {
   public Map<Tags, Integer> getSnapshotAndReset() {
     Map<Tags, Integer> tagsToCountSnapshot = new HashMap<>();
     for (Tags tags : tagsToCounter.keySet()) {
-      tagsToCounter.compute(tags, (key, atomicInteger) -> {
-        int value = atomicInteger.getAndSet(0);
-        tagsToCountSnapshot.put(key, value);
-        if (value > 0) {
-          return atomicInteger;
-        } else {
-          return null;
-        }
-      });
+      AtomicInteger counter = tagsToCounter.get(tags);
+      int count = counter.getAndSet(0);
+      if (count == 0) {
+        tagsToCounter.remove(tags);
+      }
+      tagsToCountSnapshot.put(tags, count);
     }
     return tagsToCountSnapshot;
   }
