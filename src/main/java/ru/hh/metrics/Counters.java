@@ -7,13 +7,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class CounterAggregator {
-  private static final Logger logger = LoggerFactory.getLogger(CounterAggregator.class);
+public class Counters {
+  private static final Logger logger = LoggerFactory.getLogger(Counters.class);
 
   private final Map<Tags, AtomicInteger> tagsToCounter = new ConcurrentHashMap<>();
   private final int maxNumOfDifferentTags;
 
-  public CounterAggregator(int maxNumOfDifferentTags) {
+  public Counters(int maxNumOfDifferentTags) {
     this.maxNumOfDifferentTags = maxNumOfDifferentTags;
   }
 

@@ -58,13 +58,13 @@ public class StatsDSender {
     }
   }
 
-  public void sendCounterPeriodically(String metricName, CounterAggregator counterAggregator) {
-    scheduledExecutorService.scheduleAtFixedRate(() -> sendCountMetric(metricName, counterAggregator), PERIOD_OF_TRANSMISSION_STATS_SECONDS,
+  public void sendCountersPeriodically(String metricName, Counters counters) {
+    scheduledExecutorService.scheduleAtFixedRate(() -> sendCountMetric(metricName, counters), PERIOD_OF_TRANSMISSION_STATS_SECONDS,
         PERIOD_OF_TRANSMISSION_STATS_SECONDS, TimeUnit.SECONDS);
   }
 
-  private void sendCountMetric(String metricName, CounterAggregator counterAggregator) {
-    Map<Tags, Integer> counterAggregatorSnapshot = counterAggregator.getSnapshotAndReset();
+  private void sendCountMetric(String metricName, Counters counters) {
+    Map<Tags, Integer> counterAggregatorSnapshot = counters.getSnapshotAndReset();
     counterAggregatorSnapshot.forEach((tags, count) -> statsDClient.gauge(metricName + "." + getTagString(tags.getTags()), (double) count / PERIOD_OF_TRANSMISSION_STATS_SECONDS));
   }
 

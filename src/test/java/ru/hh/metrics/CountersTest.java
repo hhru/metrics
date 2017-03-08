@@ -11,51 +11,51 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static ru.hh.metrics.TestUtils.tagsOf;
 
-public class CounterAggregatorTest {
-  private final CounterAggregator counterAggregator = new CounterAggregator(300);
+public class CountersTest {
+  private final Counters counters = new Counters(300);
 
   @Test
-  public void sendMetricsWithoutValues() {
-    assertTrue(counterAggregator.getSnapshotAndReset().isEmpty());
+  public void empty() {
+    assertTrue(counters.getSnapshotAndReset().isEmpty());
   }
 
   @Test
-  public void sendMetricsOneValue() {
+  public void oneCounter() {
     Tag tag = new Tag("label", "first");
-    counterAggregator.add(5, tag);
+    counters.add(5, tag);
     Map<Tags, Integer> tagsToValue;
 
-    tagsToValue = counterAggregator.getSnapshotAndReset();
+    tagsToValue = counters.getSnapshotAndReset();
     assertEquals(1, tagsToValue.size());
     assertEquals(5, tagsToValue.get(tag).intValue());
 
-    tagsToValue = counterAggregator.getSnapshotAndReset();
+    tagsToValue = counters.getSnapshotAndReset();
     assertEquals(1, tagsToValue.size());
     assertEquals(0,  tagsToValue.get(tag).intValue());
 
-    tagsToValue = counterAggregator.getSnapshotAndReset();
+    tagsToValue = counters.getSnapshotAndReset();
     assertTrue(tagsToValue.isEmpty());
   }
 
   @Test
-  public void sendMetricsDifferentOrderOfTags() {
-    counterAggregator.add(5, new Tag("label", "first"), new Tag("notlabel", "a"));
-    counterAggregator.add(3, new Tag("notlabel", "a"), new Tag("label", "first"));
+  public void differentTagsOrder() {
+    counters.add(5, new Tag("label", "first"), new Tag("notlabel", "a"));
+    counters.add(3, new Tag("notlabel", "a"), new Tag("label", "first"));
 
-    Map<Tags, Integer> tagsToCount = counterAggregator.getSnapshotAndReset();
+    Map<Tags, Integer> tagsToCount = counters.getSnapshotAndReset();
 
     assertEquals(1, tagsToCount.size());
     assertEquals(8, tagsToCount.get(tagsOf(new Tag("label", "first"), new Tag("notlabel", "a"))).intValue());
   }
 
   @Test
-  public void sendMetricsTwoTags() {
-    counterAggregator.add(5, new Tag("label", "first"), new Tag("region", "vacancy"));
-    counterAggregator.add(2, new Tag("label", "first"), new Tag("region", "resume"));
-    counterAggregator.add(6, new Tag("label", "second"), new Tag("region", "resume"));
-    counterAggregator.add(11, new Tag("label", "third"), new Tag("region", "resume"));
+  public void fourCounters() {
+    counters.add(5, new Tag("label", "first"), new Tag("region", "vacancy"));
+    counters.add(2, new Tag("label", "first"), new Tag("region", "resume"));
+    counters.add(6, new Tag("label", "second"), new Tag("region", "resume"));
+    counters.add(11, new Tag("label", "third"), new Tag("region", "resume"));
 
-    Map<Tags, Integer> tagsToCount = counterAggregator.getSnapshotAndReset();
+    Map<Tags, Integer> tagsToCount = counters.getSnapshotAndReset();
 
     assertEquals(4, tagsToCount.size());
     assertEquals(5, tagsToCount.get(tagsOf(new Tag("label", "first"), new Tag("region", "vacancy"))).intValue());
@@ -65,12 +65,12 @@ public class CounterAggregatorTest {
   }
 
   @Test
-  public void sendMetricsTwoThreads() throws InterruptedException {
+  public void twoThreads() throws InterruptedException {
     int increases = 1_000_000;
     Tag tag = new Tag("label", "first");
     Runnable increaseMetricTask = () -> {
       for (int i = 0; i < increases; i++) {
-        counterAggregator.add(1, tag);
+        counters.add(1, tag);
       }
     };
 
@@ -83,14 +83,14 @@ public class CounterAggregatorTest {
       increaseMetricThread.start();
 
       for (int i = 0; i < increases; i++) {
-        counterAggregator.add(1, tag);
+        counters.add(1, tag);
         if (i % 1000 == 0) {
-          snapshots.add(counterAggregator.getSnapshotAndReset());
+          snapshots.add(counters.getSnapshotAndReset());
         }
       }
 
       increaseMetricThread.join();
-      snapshots.add(counterAggregator.getSnapshotAndReset());
+      snapshots.add(counters.getSnapshotAndReset());
 
       int sum = 0;
       for (Map<Tags, Integer> snapshot : snapshots) {

@@ -29,11 +29,11 @@ public class CounterAggregatorPerfTest {
   }
 
   private static void test(int testIteration) throws InterruptedException {
-    CounterAggregator counterAggregator = new CounterAggregator(300);
+    Counters counters = new Counters(300);
 
     Runnable addTask = () -> {
       for (int i = 1; i <= increases; i++) {
-        add(counterAggregator, i);
+        add(counters, i);
       }
     };
     Thread increaseMetricThread = new Thread(addTask);
@@ -45,22 +45,22 @@ public class CounterAggregatorPerfTest {
     increaseMetricThread.start();
 
     for (int i = 1; i <= increases; i++) {
-      add(counterAggregator, i);
+      add(counters, i);
       if (i % snapshotIteration == 0) {
-        snapshots.add(counterAggregator.getSnapshotAndReset());
+        snapshots.add(counters.getSnapshotAndReset());
       }
     }
 
     increaseMetricThread.join();
 
-    System.out.println("CounterAggregator " + testIteration + " " + (currentTimeMillis() - start) + " ms");
+    System.out.println("Counters " + testIteration + " " + (currentTimeMillis() - start) + " ms");
 
-    snapshots.add(counterAggregator.getSnapshotAndReset());
+    snapshots.add(counters.getSnapshotAndReset());
     checkSnapshots(snapshots);
   }
 
-  private static void add(CounterAggregator counterAggregator, int iteration) {
-    counterAggregator.add(1, createTag(iteration % tagValues.length));
+  private static void add(Counters counters, int iteration) {
+    counters.add(1, createTag(iteration % tagValues.length));
   }
 
   private static Tag createTag(int tagValueIndex) {
