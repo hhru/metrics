@@ -1,7 +1,7 @@
 package ru.hh.metrics;
 
 import com.timgroup.statsd.StatsDClient;
-import java.util.List;
+
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -17,34 +17,65 @@ public class StatsDSender {
     this.scheduledExecutorService = scheduledExecutorService;
   }
 
-  public void sendPercentilesPeriodically(String metricName, PercentileAggregator percentileAggregator) {
-    scheduledExecutorService.scheduleAtFixedRate(() -> sendPercentilesMetric(metricName, percentileAggregator), PERIOD_OF_TRANSMISSION_STATS_SECONDS,
-            PERIOD_OF_TRANSMISSION_STATS_SECONDS, TimeUnit.SECONDS);
+  public void sendPercentilesPeriodically(String metricName, Histogram histogram, int... percentiles) {
+    Percentiles percentilesCalculator = new Percentiles(percentiles);
+    scheduledExecutorService.scheduleAtFixedRate(
+        () -> {
+          Map<Integer, Integer> valueToCount = histogram.getValueToCountAndReset();
+          computeAndSendPercentiles(metricName, "", valueToCount, percentilesCalculator);
+        },
+        PERIOD_OF_TRANSMISSION_STATS_SECONDS, PERIOD_OF_TRANSMISSION_STATS_SECONDS, TimeUnit.SECONDS);
   }
 
-  public void sendCounterPeriodically(String metricName, CounterAggregator counterAggregator) {
-    scheduledExecutorService.scheduleAtFixedRate(() -> sendCountMetric(metricName, counterAggregator), PERIOD_OF_TRANSMISSION_STATS_SECONDS,
-            PERIOD_OF_TRANSMISSION_STATS_SECONDS, TimeUnit.SECONDS);
+  public void sendPercentilesPeriodically(String metricName, Histograms histograms, int... percentiles) {
+    Percentiles percentilesСalculator = new Percentiles(percentiles);
+    scheduledExecutorService.scheduleAtFixedRate(
+        () -> {
+          Map<Tags, Map<Integer, Integer>> tagsToHistogram = histograms.getTagsToHistogramAndReset();
+          for (Map.Entry<Tags, Map<Integer, Integer>> tagsAndHistogram : tagsToHistogram.entrySet()) {
+            computeAndSendPercentiles(
+                metricName,
+                getTagString(tagsAndHistogram.getKey().getTags()),
+                tagsAndHistogram.getValue(),
+                percentilesСalculator
+            );
+          }
+        },
+        PERIOD_OF_TRANSMISSION_STATS_SECONDS,
+        PERIOD_OF_TRANSMISSION_STATS_SECONDS, TimeUnit.SECONDS);
   }
 
-  private void sendPercentilesMetric(String metricName, PercentileAggregator percentileAggregator) {
-    Map<List<Tag>, Integer> percentileAggregatorSnapshot = percentileAggregator.getSnapshotAndReset();
-    percentileAggregatorSnapshot.forEach((tags, percentileValue) -> statsDClient.gauge(metricName + "." + getTagString(tags), percentileValue));
+  private void computeAndSendPercentiles(String metricName,
+                                         String tagsString,
+                                         Map<Integer, Integer> valueToCount,
+                                         Percentiles percentiles) {
+    Map<Integer, Integer> percentileToValue = percentiles.compute(valueToCount);
+    for (Map.Entry<Integer, Integer> percentileAndValue : percentileToValue.entrySet()) {
+      statsDClient.gauge(
+          metricName + '.' + tagsString + ".percentile_is_" + percentileAndValue.getKey(),
+          percentileAndValue.getValue()
+      );
+    }
   }
 
-  private void sendCountMetric(String metricName, CounterAggregator counterAggregator) {
-    Map<List<Tag>, Integer> counterAggregatorSnapshot = counterAggregator.getSnapshotAndReset();
-    counterAggregatorSnapshot.forEach((tags, count) -> statsDClient.gauge(metricName + "." + getTagString(tags), (double) count / PERIOD_OF_TRANSMISSION_STATS_SECONDS));
+  public void sendCountersPeriodically(String metricName, Counters counters) {
+    scheduledExecutorService.scheduleAtFixedRate(() -> sendCountMetric(metricName, counters), PERIOD_OF_TRANSMISSION_STATS_SECONDS,
+        PERIOD_OF_TRANSMISSION_STATS_SECONDS, TimeUnit.SECONDS);
   }
 
-  static String getTagString(List<Tag> tagList) {
+  private void sendCountMetric(String metricName, Counters counters) {
+    Map<Tags, Integer> counterAggregatorSnapshot = counters.getSnapshotAndReset();
+    counterAggregatorSnapshot.forEach((tags, count) -> statsDClient.gauge(metricName + "." + getTagString(tags.getTags()), (double) count / PERIOD_OF_TRANSMISSION_STATS_SECONDS));
+  }
+
+  static String getTagString(Tag[] tags) {
     StringBuilder stringBuilder = new StringBuilder();
 
-    for (int i = 0; i < tagList.size(); i++) {
-      stringBuilder.append(tagList.get(i).name.replace('.', '-'))
+    for (int i = 0; i < tags.length; i++) {
+      stringBuilder.append(tags[i].name.replace('.', '-'))
               .append("_is_")
-              .append(tagList.get(i).value.replace('.', '-'));
-      if (i != tagList.size() - 1) {
+              .append(tags[i].value.replace('.', '-'));
+      if (i != tags.length - 1) {
         stringBuilder.append(".");
       }
     }
