@@ -65,7 +65,7 @@ public class StatsDSender {
 
   private void sendCountMetric(String metricName, Counters counters) {
     Map<Tags, Integer> counterAggregatorSnapshot = counters.getSnapshotAndReset();
-    counterAggregatorSnapshot.forEach((tags, count) -> statsDClient.gauge(metricName + "." + getTagString(tags.getTags()), (double) count / PERIOD_OF_TRANSMISSION_STATS_SECONDS));
+    counterAggregatorSnapshot.forEach((tags, count) -> statsDClient.count(metricName + "." + getTagString(tags.getTags()), count));
   }
 
   static String getTagString(Tag[] tags) {
