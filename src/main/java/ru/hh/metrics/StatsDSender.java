@@ -2,6 +2,7 @@ package ru.hh.metrics;
 
 import com.timgroup.statsd.StatsDClient;
 
+import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -22,7 +23,7 @@ public class StatsDSender {
     scheduledExecutorService.scheduleAtFixedRate(
         () -> {
           Map<Integer, Integer> valueToCount = histogram.getValueToCountAndReset();
-          computeAndSendPercentiles(metricName, "", valueToCount, percentilesCalculator);
+          computeAndSendPercentiles(metricName, null, valueToCount, percentilesCalculator);
         },
         PERIOD_OF_TRANSMISSION_STATS_SECONDS, PERIOD_OF_TRANSMISSION_STATS_SECONDS, TimeUnit.SECONDS);
   }
@@ -35,7 +36,7 @@ public class StatsDSender {
           for (Map.Entry<Tags, Map<Integer, Integer>> tagsAndHistogram : tagsToHistogram.entrySet()) {
             computeAndSendPercentiles(
                 metricName,
-                getTagString(tagsAndHistogram.getKey().getTags()),
+                tagsAndHistogram.getKey().getTags(),
                 tagsAndHistogram.getValue(),
                 percentilesСalculator
             );
@@ -46,37 +47,60 @@ public class StatsDSender {
   }
 
   private void computeAndSendPercentiles(String metricName,
-                                         String tagsString,
+                                         @Nullable Tag[] tags,
                                          Map<Integer, Integer> valueToCount,
                                          Percentiles percentiles) {
     Map<Integer, Integer> percentileToValue = percentiles.compute(valueToCount);
     for (Map.Entry<Integer, Integer> percentileAndValue : percentileToValue.entrySet()) {
       statsDClient.gauge(
-          metricName + '.' + tagsString + ".percentile_is_" + percentileAndValue.getKey(),
+          getFullMetricName(metricName, tags) + ".percentile_is_" + percentileAndValue.getKey(),
           percentileAndValue.getValue()
       );
     }
   }
 
   public void sendCountersPeriodically(String metricName, Counters counters) {
-    scheduledExecutorService.scheduleAtFixedRate(() -> sendCountMetric(metricName, counters), PERIOD_OF_TRANSMISSION_STATS_SECONDS,
-        PERIOD_OF_TRANSMISSION_STATS_SECONDS, TimeUnit.SECONDS);
+    scheduledExecutorService.scheduleAtFixedRate(
+        () -> sendCountMetric(metricName, counters),
+        PERIOD_OF_TRANSMISSION_STATS_SECONDS,
+        PERIOD_OF_TRANSMISSION_STATS_SECONDS,
+        TimeUnit.SECONDS
+    );
   }
 
   private void sendCountMetric(String metricName, Counters counters) {
     Map<Tags, Integer> counterAggregatorSnapshot = counters.getSnapshotAndReset();
-    counterAggregatorSnapshot.forEach((tags, count) -> statsDClient.count(metricName + "." + getTagString(tags.getTags()), count));
+    counterAggregatorSnapshot.forEach((tags, count) -> statsDClient.count(getFullMetricName(metricName, tags.getTags()), count));
   }
 
-  static String getTagString(Tag[] tags) {
-    StringBuilder stringBuilder = new StringBuilder();
+  public void sendMaxPeriodically(String metricName, Max max, Tag... tags) {
+    String fullName = getFullMetricName(metricName, tags);
+    scheduledExecutorService.scheduleAtFixedRate(
+        () -> statsDClient.gauge(fullName, max.getAndReset()),
+        PERIOD_OF_TRANSMISSION_STATS_SECONDS,
+        PERIOD_OF_TRANSMISSION_STATS_SECONDS,
+        TimeUnit.SECONDS
+    );
+  }
 
-    for (int i = 0; i < tags.length; i++) {
+  static String getFullMetricName(String metricName, @Nullable Tag[] tags) {
+    if (tags == null) {
+      return metricName;
+    }
+
+    int tagsLength = tags.length;
+    if (tagsLength == 0) {
+      return metricName;
+    }
+
+    StringBuilder stringBuilder = new StringBuilder(metricName + '.');
+
+    for (int i = 0; i < tagsLength; i++) {
       stringBuilder.append(tags[i].name.replace('.', '-'))
               .append("_is_")
               .append(tags[i].value.replace('.', '-'));
-      if (i != tags.length - 1) {
-        stringBuilder.append(".");
+      if (i != tagsLength - 1) {
+        stringBuilder.append('.');
       }
     }
     return stringBuilder.toString();
