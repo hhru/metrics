@@ -28,4 +28,8 @@ public class Max {
     return maxUpdater.getAndSet(this, defaultValue);
   }
 
+  public int get() {
+    return maxUpdater.get(this);
+  }
+
 }
