@@ -12,38 +12,49 @@ public class StatsDSender {
 
   private final StatsDClient statsDClient;
   private final ScheduledExecutorService scheduledExecutorService;
+  private final int periodOfTransmissionStatsSeconds;
 
   public StatsDSender(StatsDClient statsDClient, ScheduledExecutorService scheduledExecutorService) {
+    this(statsDClient, scheduledExecutorService, PERIOD_OF_TRANSMISSION_STATS_SECONDS);
+  }
+
+  public StatsDSender(StatsDClient statsDClient, ScheduledExecutorService scheduledExecutorService, int periodOfTransmissionStatsSeconds) {
     this.statsDClient = statsDClient;
     this.scheduledExecutorService = scheduledExecutorService;
+    this.periodOfTransmissionStatsSeconds = periodOfTransmissionStatsSeconds;
   }
 
   public void sendPercentilesPeriodically(String metricName, Histogram histogram, int... percentiles) {
     Percentiles percentilesCalculator = new Percentiles(percentiles);
     scheduledExecutorService.scheduleAtFixedRate(
-        () -> {
-          Map<Integer, Integer> valueToCount = histogram.getValueToCountAndReset();
-          computeAndSendPercentiles(metricName, null, valueToCount, percentilesCalculator);
-        },
-        PERIOD_OF_TRANSMISSION_STATS_SECONDS, PERIOD_OF_TRANSMISSION_STATS_SECONDS, TimeUnit.SECONDS);
+            () -> {
+              Map<Integer, Integer> valueToCount = histogram.getValueToCountAndReset();
+              computeAndSendPercentiles(metricName, null, valueToCount, percentilesCalculator);
+            },
+            periodOfTransmissionStatsSeconds,
+            periodOfTransmissionStatsSeconds,
+            TimeUnit.SECONDS
+    );
   }
 
   public void sendPercentilesPeriodically(String metricName, Histograms histograms, int... percentiles) {
     Percentiles percentilesСalculator = new Percentiles(percentiles);
     scheduledExecutorService.scheduleAtFixedRate(
-        () -> {
-          Map<Tags, Map<Integer, Integer>> tagsToHistogram = histograms.getTagsToHistogramAndReset();
-          for (Map.Entry<Tags, Map<Integer, Integer>> tagsAndHistogram : tagsToHistogram.entrySet()) {
-            computeAndSendPercentiles(
-                metricName,
-                tagsAndHistogram.getKey().getTags(),
-                tagsAndHistogram.getValue(),
-                percentilesСalculator
-            );
-          }
-        },
-        PERIOD_OF_TRANSMISSION_STATS_SECONDS,
-        PERIOD_OF_TRANSMISSION_STATS_SECONDS, TimeUnit.SECONDS);
+            () -> {
+              Map<Tags, Map<Integer, Integer>> tagsToHistogram = histograms.getTagsToHistogramAndReset();
+              for (Map.Entry<Tags, Map<Integer, Integer>> tagsAndHistogram : tagsToHistogram.entrySet()) {
+                computeAndSendPercentiles(
+                        metricName,
+                        tagsAndHistogram.getKey().getTags(),
+                        tagsAndHistogram.getValue(),
+                        percentilesСalculator
+                );
+              }
+            },
+            periodOfTransmissionStatsSeconds,
+            periodOfTransmissionStatsSeconds,
+            TimeUnit.SECONDS
+    );
   }
 
   private void computeAndSendPercentiles(String metricName,
@@ -61,10 +72,10 @@ public class StatsDSender {
 
   public void sendCountersPeriodically(String metricName, Counters counters) {
     scheduledExecutorService.scheduleAtFixedRate(
-        () -> sendCountMetric(metricName, counters),
-        PERIOD_OF_TRANSMISSION_STATS_SECONDS,
-        PERIOD_OF_TRANSMISSION_STATS_SECONDS,
-        TimeUnit.SECONDS
+            () -> sendCountMetric(metricName, counters),
+            periodOfTransmissionStatsSeconds,
+            periodOfTransmissionStatsSeconds,
+            TimeUnit.SECONDS
     );
   }
 
@@ -73,13 +84,33 @@ public class StatsDSender {
     counterAggregatorSnapshot.forEach((tags, count) -> statsDClient.count(getFullMetricName(metricName, tags.getTags()), count));
   }
 
+  public void sendMaxsPeriodically(String metricName, Maxs maxs) {
+    scheduledExecutorService.scheduleAtFixedRate(
+            () -> sendMaxMetric(metricName, maxs),
+            periodOfTransmissionStatsSeconds,
+            periodOfTransmissionStatsSeconds,
+            TimeUnit.SECONDS
+    );
+  }
+
+  private void sendMaxMetric(String metricName, Maxs maxs) {
+    Map<Tags, Integer> counterAggregatorSnapshot = maxs.getSnapshotAndReset();
+    counterAggregatorSnapshot.forEach((tags, max) -> {
+      final String fullMetricName = getFullMetricName(metricName, tags.getTags());
+      if (max < 0) {
+        statsDClient.gauge(fullMetricName, 0);
+      }
+      statsDClient.gauge(fullMetricName, max);
+    });
+  }
+
   public void sendMaxPeriodically(String metricName, Max max, Tag... tags) {
     String fullName = getFullMetricName(metricName, tags);
     scheduledExecutorService.scheduleAtFixedRate(
-        () -> statsDClient.gauge(fullName, max.getAndReset()),
-        PERIOD_OF_TRANSMISSION_STATS_SECONDS,
-        PERIOD_OF_TRANSMISSION_STATS_SECONDS,
-        TimeUnit.SECONDS
+            () -> statsDClient.gauge(fullName, max.getAndReset()),
+            periodOfTransmissionStatsSeconds,
+            periodOfTransmissionStatsSeconds,
+            TimeUnit.SECONDS
     );
   }
 

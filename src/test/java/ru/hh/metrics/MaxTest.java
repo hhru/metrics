@@ -5,6 +5,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import static java.lang.Integer.MIN_VALUE;
 import static java.lang.System.currentTimeMillis;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -69,6 +70,21 @@ public class MaxTest {
       assertEquals(maxValue, maxOfSnapshots);
     }
 
+  }
+
+  @Test
+  public void maxs() {
+    final Maxs maxs = new Maxs(300);
+    final Tag tag = new Tag("thread", "search");
+
+    maxs.set(1, tag);
+    assertEquals(1, maxs.getSnapshotAndReset().get(tag).intValue());
+    assertEquals(MIN_VALUE, maxs.getSnapshotAndReset().get(tag).intValue());
+
+    maxs.set(5, tag);
+    maxs.set(3, tag);
+    maxs.set(1, tag);
+    assertEquals(5, maxs.getSnapshotAndReset().get(tag).intValue());
   }
 
 }
