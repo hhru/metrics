@@ -1,5 +1,9 @@
 package ru.hh.metrics;
 
+/**
+ * Just a name-value pair that represents a breakdown of a metric.<br/>
+ * For example, url=/vacancy, node=192.168.1.1, db_name=master.
+ */
 public class Tag extends Tags implements Comparable<Tag> {
   public final String name;
   public final String value;

@@ -7,6 +7,11 @@ import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * A glue between aggregators ({@link Counters}, {@link Histogram}, etc.) and StatsDClient.<br/>
+ * For each aggregator there is a corresponding method that registers a periodic task.<br/>
+ * This task sends snapshot of the aggregator to a monitoring system and resets the aggregator.
+ */
 public class StatsDSender {
   private static final int PERIOD_OF_TRANSMISSION_STATS_SECONDS = 60;
 
