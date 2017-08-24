@@ -7,7 +7,7 @@ import java.util.Map;
 
 import static java.lang.System.currentTimeMillis;
 
-public class CounterAggregatorPerfTest {
+public class CountersPerfTest {
 
   private static final int tests = 40;
   private static final int increases = 100_000_000;

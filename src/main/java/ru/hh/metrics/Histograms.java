@@ -7,16 +7,26 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Maintains a separate {@link Histogram} for each combination of tags.<br/>
+ */
 public class Histograms {
   private static final Logger logger = LoggerFactory.getLogger(Histograms.class);
 
   private final int maxHistogramSize;
   private final Map<Tags, Histogram> tagsToHistogram = new ConcurrentHashMap<>();
-  private final int maxNumOfDifferentTags;
+  private final int maxNumOfHistograms;
 
-  public Histograms(int maxHistogramSize, int maxNumOfDifferentTags) {
+  /**
+   * @param maxHistogramSize an upper limit on the number of different metric values. See {@link Histogram#Histogram(int)}.
+   * @param maxNumOfHistograms an upper limit on the number of histograms.<br/>
+   * An instance of Histograms maintains a separate {@link Histogram} for each combination of tags.<br/>
+   * If there are too many combinations we can consume too much memory.<br/>
+   * To prevent this, when maxNumOfHistograms is reached a message will be logged to Slf4J and a new histogram will be thrown away.
+   */
+  public Histograms(int maxHistogramSize, int maxNumOfHistograms) {
     this.maxHistogramSize = maxHistogramSize;
-    this.maxNumOfDifferentTags = maxNumOfDifferentTags;
+    this.maxNumOfHistograms = maxNumOfHistograms;
   }
 
   public void save(int value, Tag tag) {
@@ -30,8 +40,8 @@ public class Histograms {
   private void saveInner(int value, Tags tags) {
     Histogram histogram = tagsToHistogram.get(tags);
     if (histogram == null) {
-      if (tagsToHistogram.size() >= maxNumOfDifferentTags) {
-        logger.error("Max number of different tags reached, dropping observation");
+      if (tagsToHistogram.size() >= maxNumOfHistograms) {
+        logger.error("Max number of histograms, dropping observation");
         return;
       }
       histogram = new Histogram(maxHistogramSize);
@@ -43,7 +53,7 @@ public class Histograms {
     histogram.save(value);
   }
 
-  public Map<Tags, Map<Integer, Integer>> getTagsToHistogramAndReset() {
+  Map<Tags, Map<Integer, Integer>> getTagsToHistogramAndReset() {
     Map<Tags, Map<Integer, Integer>> tagsToHistogramSnapshot = new HashMap<>(tagsToHistogram.size());
     for (Tags tags : tagsToHistogram.keySet()) {
       Histogram histogram = tagsToHistogram.get(tags);
