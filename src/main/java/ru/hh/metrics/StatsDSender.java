@@ -51,6 +51,14 @@ public class StatsDSender {
         PERIOD_OF_TRANSMISSION_STATS_SECONDS, TimeUnit.SECONDS);
   }
 
+  public void sendTiming(String metricName, long value, Tag... tags) {
+    statsDClient.time(getFullMetricName(metricName, tags), value);
+  }
+
+  public void sendCounter(String metricName, long delta, Tag... tags) {
+    statsDClient.count(getFullMetricName(metricName, tags), delta);
+  }
+
   private void computeAndSendPercentiles(String metricName,
                                          @Nullable Tag[] tags,
                                          Map<Integer, Integer> valueToCount,
