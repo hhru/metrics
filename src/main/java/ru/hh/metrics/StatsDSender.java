@@ -6,6 +6,7 @@ import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 /**
  * A glue between aggregators ({@link Counters}, {@link Histogram}, etc.) and StatsDClient.<br/>
@@ -81,9 +82,22 @@ public class StatsDSender {
     );
   }
 
+  public void sendMetricPeriodically(String metricName, Supplier<Long> metric, Tag... tags) {
+    scheduledExecutorService.scheduleAtFixedRate(
+        () -> sendGaugeMetric(metricName, metric.get(), tags),
+        PERIOD_OF_TRANSMISSION_STATS_SECONDS,
+        PERIOD_OF_TRANSMISSION_STATS_SECONDS,
+        TimeUnit.SECONDS
+    );
+  }
+
   private void sendCountMetric(String metricName, Counters counters) {
     Map<Tags, Integer> counterAggregatorSnapshot = counters.getSnapshotAndReset();
     counterAggregatorSnapshot.forEach((tags, count) -> statsDClient.count(getFullMetricName(metricName, tags.getTags()), count));
+  }
+
+  private void sendGaugeMetric(String metricName, long metric, Tag... tags) {
+    statsDClient.gauge(getFullMetricName(metricName, tags), metric);
   }
 
   public void sendMaxPeriodically(String metricName, Max max, Tag... tags) {
