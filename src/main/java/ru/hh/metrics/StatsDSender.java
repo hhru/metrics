@@ -3,7 +3,6 @@ package ru.hh.metrics;
 import com.timgroup.statsd.StatsDClient;
 
 import javax.annotation.Nullable;
-import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -83,9 +82,9 @@ public class StatsDSender {
     );
   }
 
-  public void sendMetricsPeriodically(String metricName, Supplier<Collection<Metric>> metrics) {
+  public void sendMetricPeriodically(String metricName, Supplier<Long> metric, Tag... tags) {
     scheduledExecutorService.scheduleAtFixedRate(
-        () -> sendGaugeMetrics(metricName, metrics.get()),
+        () -> sendGaugeMetric(metricName, metric.get(), tags),
         PERIOD_OF_TRANSMISSION_STATS_SECONDS,
         PERIOD_OF_TRANSMISSION_STATS_SECONDS,
         TimeUnit.SECONDS
@@ -97,8 +96,8 @@ public class StatsDSender {
     counterAggregatorSnapshot.forEach((tags, count) -> statsDClient.count(getFullMetricName(metricName, tags.getTags()), count));
   }
 
-  private void sendGaugeMetrics(String metricName, Collection<Metric> metrics) {
-    metrics.forEach(metric -> statsDClient.gauge(getFullMetricName(metricName, metric.getTags()), metric.getValue()));
+  private void sendGaugeMetric(String metricName, long metric, Tag... tags) {
+    statsDClient.gauge(getFullMetricName(metricName, tags), metric);
   }
 
   public void sendMaxPeriodically(String metricName, Max max, Tag... tags) {
