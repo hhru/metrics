@@ -14,14 +14,23 @@ import java.util.function.Supplier;
  * This task sends snapshot of the aggregator to a monitoring system and resets the aggregator.
  */
 public class StatsDSender {
-  private static final int PERIOD_OF_TRANSMISSION_STATS_SECONDS = 60;
+  private static final int DEFAULT_PERIOD_OF_TRANSMISSION_STATS_SECONDS = 60;
 
   private final StatsDClient statsDClient;
   private final ScheduledExecutorService scheduledExecutorService;
+  private final int periodOfTransmissionStatsSeconds;
 
   public StatsDSender(StatsDClient statsDClient, ScheduledExecutorService scheduledExecutorService) {
     this.statsDClient = statsDClient;
     this.scheduledExecutorService = scheduledExecutorService;
+    this.periodOfTransmissionStatsSeconds = DEFAULT_PERIOD_OF_TRANSMISSION_STATS_SECONDS;
+  }
+
+  public StatsDSender(StatsDClient statsDClient, ScheduledExecutorService scheduledExecutorService,
+                      int periodOfTransmissionStatsSeconds) {
+    this.statsDClient = statsDClient;
+    this.scheduledExecutorService = scheduledExecutorService;
+    this.periodOfTransmissionStatsSeconds = periodOfTransmissionStatsSeconds;
   }
 
   public void sendPercentilesPeriodically(String metricName, Histogram histogram, int... percentiles) {
@@ -31,7 +40,10 @@ public class StatsDSender {
           Map<Integer, Integer> valueToCount = histogram.getValueToCountAndReset();
           computeAndSendPercentiles(metricName, null, valueToCount, percentilesCalculator);
         },
-        PERIOD_OF_TRANSMISSION_STATS_SECONDS, PERIOD_OF_TRANSMISSION_STATS_SECONDS, TimeUnit.SECONDS);
+        periodOfTransmissionStatsSeconds,
+        periodOfTransmissionStatsSeconds,
+        TimeUnit.SECONDS
+    );
   }
 
   public void sendPercentilesPeriodically(String metricName, Histograms histograms, int... percentiles) {
@@ -48,8 +60,10 @@ public class StatsDSender {
             );
           }
         },
-        PERIOD_OF_TRANSMISSION_STATS_SECONDS,
-        PERIOD_OF_TRANSMISSION_STATS_SECONDS, TimeUnit.SECONDS);
+        periodOfTransmissionStatsSeconds,
+        periodOfTransmissionStatsSeconds,
+        TimeUnit.SECONDS
+    );
   }
 
   public void sendTiming(String metricName, long value, Tag... tags) {
@@ -76,8 +90,8 @@ public class StatsDSender {
   public void sendCountersPeriodically(String metricName, Counters counters) {
     scheduledExecutorService.scheduleAtFixedRate(
         () -> sendCountMetric(metricName, counters),
-        PERIOD_OF_TRANSMISSION_STATS_SECONDS,
-        PERIOD_OF_TRANSMISSION_STATS_SECONDS,
+        periodOfTransmissionStatsSeconds,
+        periodOfTransmissionStatsSeconds,
         TimeUnit.SECONDS
     );
   }
@@ -85,8 +99,8 @@ public class StatsDSender {
   public void sendMetricPeriodically(String metricName, Supplier<Long> metric, Tag... tags) {
     scheduledExecutorService.scheduleAtFixedRate(
         () -> sendGaugeMetric(metricName, metric.get(), tags),
-        PERIOD_OF_TRANSMISSION_STATS_SECONDS,
-        PERIOD_OF_TRANSMISSION_STATS_SECONDS,
+        periodOfTransmissionStatsSeconds,
+        periodOfTransmissionStatsSeconds,
         TimeUnit.SECONDS
     );
   }
@@ -104,8 +118,8 @@ public class StatsDSender {
     String fullName = getFullMetricName(metricName, tags);
     scheduledExecutorService.scheduleAtFixedRate(
         () -> statsDClient.gauge(fullName, max.getAndReset()),
-        PERIOD_OF_TRANSMISSION_STATS_SECONDS,
-        PERIOD_OF_TRANSMISSION_STATS_SECONDS,
+        periodOfTransmissionStatsSeconds,
+        periodOfTransmissionStatsSeconds,
         TimeUnit.SECONDS
     );
   }
@@ -124,8 +138,8 @@ public class StatsDSender {
 
     for (int i = 0; i < tagsLength; i++) {
       stringBuilder.append(tags[i].name.replace('.', '-'))
-              .append("_is_")
-              .append(tags[i].value.replace('.', '-'));
+          .append("_is_")
+          .append(tags[i].value.replace('.', '-'));
       if (i != tagsLength - 1) {
         stringBuilder.append('.');
       }
