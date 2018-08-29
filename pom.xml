@@ -10,7 +10,7 @@
 
     <groupId>ru.hh.metrics</groupId>
     <artifactId>hh-metrics</artifactId>
-    <version>0.17-SNAPSHOT</version>
+    <version>0.17</version>
 
     <dependencies>
         <dependency>
@@ -70,7 +70,7 @@
     <scm>
         <connection>scm:git:git@github.com:hhru/metrics.git</connection>
         <developerConnection>scm:git:git@github.com:hhru/metrics.git</developerConnection>
-        <tag>HEAD</tag>
+        <tag>hh-metrics-0.17</tag>
     </scm>
 
 </project>
