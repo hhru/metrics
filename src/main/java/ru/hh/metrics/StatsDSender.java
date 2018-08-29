@@ -124,6 +124,26 @@ public class StatsDSender {
     );
   }
 
+  public void sendMomentsPeriodically(String metricName, Moments moments, Tag... tags) {
+    String minMetricName = getFullMetricName(metricName + ".min", tags);
+    String maxMetricName = getFullMetricName(metricName + ".max", tags);
+    String meanMetricName = getFullMetricName(metricName + ".mean", tags);
+    String varianceMetricName = getFullMetricName(metricName + ".variance", tags);
+
+    scheduledExecutorService.scheduleAtFixedRate(
+      () -> {
+        Moments.MomentsData data = moments.getAndReset();
+        statsDClient.gauge(minMetricName, data.getMin());
+        statsDClient.gauge(maxMetricName, data.getMax());
+        statsDClient.gauge(meanMetricName, data.getMean());
+        statsDClient.gauge(varianceMetricName, data.getVariance());
+      },
+      periodOfTransmissionStatsSeconds,
+      periodOfTransmissionStatsSeconds,
+      TimeUnit.SECONDS
+    );
+  }
+
   static String getFullMetricName(String metricName, @Nullable Tag[] tags) {
     if (tags == null) {
       return metricName;
