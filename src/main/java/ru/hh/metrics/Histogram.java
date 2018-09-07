@@ -33,7 +33,7 @@ public class Histogram {
     AtomicInteger counter = valueToCounter.get(value);
     if (counter == null) {
       if (valueToCounter.size() >= maxHistogramSize) {
-        logger.error("Max number of different values reached, dropping observation");
+        logger.info("Max number of different values reached, dropping observation");
         return;
       }
       counter = new AtomicInteger(1);
