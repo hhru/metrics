@@ -41,7 +41,7 @@ public class Histograms {
     Histogram histogram = tagsToHistogram.get(tags);
     if (histogram == null) {
       if (tagsToHistogram.size() >= maxNumOfHistograms) {
-        logger.error("Max number of histograms, dropping observation");
+        logger.info("Max number of histograms, dropping observation");
         return;
       }
       histogram = new Histogram(maxHistogramSize);
